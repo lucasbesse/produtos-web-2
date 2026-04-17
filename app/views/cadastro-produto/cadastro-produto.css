@@ -38,21 +38,12 @@ body {
     gap: 10px;
 }
 
-.btn-login,
 .btn-back {
     text-decoration: none;
     padding: 10px 16px;
     border-radius: 8px;
     font-weight: bold;
     font-size: 14px;
-}
-
-.btn-login {
-    background-color: #3483fa;
-    color: #fff;
-}
-
-.btn-back {
     background-color: #fff;
     color: #333;
     border: 1px solid #ccc;
@@ -82,26 +73,6 @@ body {
 
 .card-top p {
     color: #666;
-    margin-bottom: 10px;
-}
-
-.switch-type {
-    font-size: 14px;
-    color: #666;
-}
-
-.switch-type a {
-    color: #3483fa;
-    font-weight: bold;
-    text-decoration: none;
-}
-
-.section-title {
-    font-size: 18px;
-    font-weight: bold;
-    margin: 24px 0 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #eee;
 }
 
 .form-grid {
@@ -125,17 +96,25 @@ body {
     margin-bottom: 8px;
 }
 
-.form-group input {
+.form-group input,
+.form-group textarea {
     width: 100%;
     padding: 12px 14px;
     border: 1px solid #d9d9d9;
     border-radius: 8px;
     font-size: 14px;
     outline: none;
+    font-family: Arial, Helvetica, sans-serif;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group textarea:focus {
     border-color: #3483fa;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 120px;
 }
 
 .message {
@@ -151,10 +130,11 @@ body {
     border: 1px solid #f5b5b5;
 }
 
-.success-message {
-    background-color: #e7f8ec;
-    color: #157347;
-    border: 1px solid #b7e4c7;
+.field-help {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #666;
 }
 
 .btn-submit {
@@ -192,7 +172,6 @@ body {
         flex-direction: column;
     }
 
-    .btn-login,
     .btn-back {
         text-align: center;
     }

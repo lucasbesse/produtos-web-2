@@ -3,6 +3,11 @@ session_start();
 
 require_once __DIR__ . '/../../../config/Database.php';
 
+if (isset($_SESSION['usuario_id'])) {
+    header('Location: ../home/index.php');
+    exit;
+}
+
 $erro = '';
 $email = '';
 
@@ -110,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
 
             <div class="register-link">
-                Ainda não tem conta? <a href="../cadastro/cadastro.php">Cadastre-se</a>
+                Ainda não tem conta? <a href="../cadastro-cliente/cadastro-cliente.php">Cadastre-se</a>
             </div>
         </div>
     </main>

@@ -153,8 +153,8 @@ body {
 
 .success-message {
     background-color: #e7f8ec;
-    color: #157347;
-    border: 1px solid #b7e4c7;
+    color: #129759;
+    border: 2px solid #b7e4c7;
 }
 
 .btn-submit {
@@ -172,6 +172,13 @@ body {
 
 .btn-submit:hover {
     background-color: #2968c8;
+}
+
+.field-help {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #666;
 }
 
 @media (max-width: 700px) {

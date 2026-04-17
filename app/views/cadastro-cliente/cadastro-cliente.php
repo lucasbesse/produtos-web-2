@@ -10,11 +10,11 @@ $nome = '';
 $telefone = '';
 $email = '';
 $cartao_credito = '';
+$cep = '';
 $rua = '';
 $numero = '';
 $complemento = '';
 $bairro = '';
-$cep = '';
 $cidade = '';
 $estado = '';
 
@@ -25,17 +25,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cartao_credito = trim($_POST['cartao_credito'] ?? '');
     $senha = trim($_POST['senha'] ?? '');
     $confirmar_senha = trim($_POST['confirmar_senha'] ?? '');
+    $cep = trim($_POST['cep'] ?? '');
     $rua = trim($_POST['rua'] ?? '');
     $numero = trim($_POST['numero'] ?? '');
     $complemento = trim($_POST['complemento'] ?? '');
     $bairro = trim($_POST['bairro'] ?? '');
-    $cep = trim($_POST['cep'] ?? '');
     $cidade = trim($_POST['cidade'] ?? '');
     $estado = trim($_POST['estado'] ?? '');
 
     if (
         $nome === '' || $email === '' || $senha === '' || $confirmar_senha === '' ||
-        $rua === '' || $numero === '' || $bairro === '' || $cep === '' ||
+        $cep === '' || $rua === '' || $numero === '' || $bairro === '' ||
         $cidade === '' || $estado === ''
     ) {
         $erro = 'Preencha todos os campos obrigatórios.';
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':bairro' => $bairro,
                     ':cep' => $cep,
                     ':cidade' => $cidade,
-                    ':estado' => $estado
+                    ':estado' => strtoupper($estado)
                 ]);
 
                 $enderecoId = $stmtEndereco->fetchColumn();
@@ -96,11 +96,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $telefone = '';
                 $email = '';
                 $cartao_credito = '';
+                $cep = '';
                 $rua = '';
                 $numero = '';
                 $complemento = '';
                 $bairro = '';
-                $cep = '';
                 $cidade = '';
                 $estado = '';
             }
@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro de Cliente - Loja Virtual</title>
-    <link rel="stylesheet" href="cadastro-cliente.css">
+    <link rel="stylesheet" href="./cadastro-cliente.css">
 </head>
 <body>
     <header class="topbar">
@@ -161,7 +161,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="form-group">
                         <label for="telefone">Telefone</label>
-                        <input type="text" id="telefone" name="telefone" value="<?php echo htmlspecialchars($telefone); ?>">
+                        <input
+                            type="text"
+                            id="telefone"
+                            name="telefone"
+                            value="<?php echo htmlspecialchars($telefone); ?>"
+                            maxlength="15"
+                            placeholder="(54) 99999-9999"
+                        >
                     </div>
 
                     <div class="form-group">
@@ -171,7 +178,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="form-group full-width">
                         <label for="cartao_credito">Cartão de crédito</label>
-                        <input type="text" id="cartao_credito" name="cartao_credito" value="<?php echo htmlspecialchars($cartao_credito); ?>">
+                        <input
+                            type="text"
+                            id="cartao_credito"
+                            name="cartao_credito"
+                            value="<?php echo htmlspecialchars($cartao_credito); ?>"
+                            maxlength="19"
+                            placeholder="0000 0000 0000 0000"
+                        >
                     </div>
 
                     <div class="form-group">
@@ -189,13 +203,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="rua">Rua *</label>
-                        <input type="text" id="rua" name="rua" value="<?php echo htmlspecialchars($rua); ?>" required>
+                        <label for="cep">CEP *</label>
+                        <input
+                            type="text"
+                            id="cep"
+                            name="cep"
+                            value="<?php echo htmlspecialchars($cep); ?>"
+                            maxlength="9"
+                            placeholder="00000-000"
+                            required
+                        >
+                        <small id="cep-status" class="field-help"></small>
                     </div>
 
                     <div class="form-group">
                         <label for="numero">Número *</label>
                         <input type="text" id="numero" name="numero" value="<?php echo htmlspecialchars($numero); ?>" required>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="rua">Rua *</label>
+                        <input type="text" id="rua" name="rua" value="<?php echo htmlspecialchars($rua); ?>" required>
                     </div>
 
                     <div class="form-group full-width">
@@ -206,11 +234,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label for="bairro">Bairro *</label>
                         <input type="text" id="bairro" name="bairro" value="<?php echo htmlspecialchars($bairro); ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="cep">CEP *</label>
-                        <input type="text" id="cep" name="cep" value="<?php echo htmlspecialchars($cep); ?>" required>
                     </div>
 
                     <div class="form-group">
@@ -228,5 +251,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </div>
     </main>
+
+    <script>
+        const telefoneInput = document.getElementById('telefone');
+        const cartaoInput = document.getElementById('cartao_credito');
+        const cepInput = document.getElementById('cep');
+        const ruaInput = document.getElementById('rua');
+        const bairroInput = document.getElementById('bairro');
+        const cidadeInput = document.getElementById('cidade');
+        const estadoInput = document.getElementById('estado');
+        const cepStatus = document.getElementById('cep-status');
+
+        function apenasNumeros(valor) {
+            return valor.replace(/\D/g, '');
+        }
+
+        function aplicarMascaraTelefone(valor) {
+            valor = apenasNumeros(valor).slice(0, 11);
+
+            if (valor.length <= 10) {
+                return valor
+                    .replace(/^(\d{2})(\d)/g, '($1) $2')
+                    .replace(/(\d{4})(\d)/, '$1-$2');
+            }
+
+            return valor
+                .replace(/^(\d{2})(\d)/g, '($1) $2')
+                .replace(/(\d{5})(\d)/, '$1-$2');
+        }
+
+        function aplicarMascaraCartao(valor) {
+            valor = apenasNumeros(valor).slice(0, 16);
+            return valor.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+        }
+
+        function aplicarMascaraCep(valor) {
+            valor = apenasNumeros(valor).slice(0, 8);
+            return valor.replace(/^(\d{5})(\d)/, '$1-$2');
+        }
+
+        telefoneInput.addEventListener('input', function () {
+            this.value = aplicarMascaraTelefone(this.value);
+        });
+
+        cartaoInput.addEventListener('input', function () {
+            this.value = aplicarMascaraCartao(this.value);
+        });
+
+        cepInput.addEventListener('input', function () {
+            this.value = aplicarMascaraCep(this.value);
+            cepStatus.textContent = '';
+        });
+
+        async function buscarCep() {
+            const cepLimpo = apenasNumeros(cepInput.value);
+
+            if (cepLimpo.length !== 8) {
+                cepStatus.textContent = 'Digite um CEP válido.';
+                return;
+            }
+
+            cepStatus.textContent = 'Buscando CEP...';
+
+            try {
+                const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+
+                if (!response.ok) {
+                    throw new Error('CEP inválido');
+                }
+
+                const data = await response.json();
+
+                if (data.erro) {
+                    cepStatus.textContent = 'CEP não encontrado.';
+                    return;
+                }
+
+                ruaInput.value = data.logradouro || '';
+                bairroInput.value = data.bairro || '';
+                cidadeInput.value = data.localidade || '';
+                estadoInput.value = data.uf || '';
+
+                cepStatus.textContent = 'Endereço preenchido automaticamente.';
+            } catch (error) {
+                cepStatus.textContent = 'Não foi possível consultar o CEP.';
+            }
+        }
+
+        cepInput.addEventListener('blur', buscarCep);
+    </script>
 </body>
 </html>
