@@ -483,12 +483,6 @@ try {
         closeDeleteModal.addEventListener('click', () => closeModal(deleteModal));
         cancelDeleteButton.addEventListener('click', () => closeModal(deleteModal));
 
-        editModal.addEventListener('click', function (event) {
-            if (event.target === editModal) {
-                closeModal(editModal);
-            }
-        });
-
         deleteModal.addEventListener('click', function (event) {
             if (event.target === deleteModal) {
                 closeModal(deleteModal);
