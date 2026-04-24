@@ -27,6 +27,37 @@ function formatarMoedaBr(?float $valor): string
     return 'R$ ' . number_format($valor, 2, ',', '.');
 }
 
+function montarImagemProduto($foto): ?array
+{
+    if ($foto === null) {
+        return null;
+    }
+
+    if (is_resource($foto)) {
+        $foto = stream_get_contents($foto);
+    }
+
+    if ($foto === false || $foto === '') {
+        return null;
+    }
+
+    $mime = 'image/jpeg';
+
+    if (class_exists('finfo')) {
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeDetectado = $finfo->buffer($foto);
+
+        if ($mimeDetectado) {
+            $mime = $mimeDetectado;
+        }
+    }
+
+    return [
+        'mime' => $mime,
+        'base64' => base64_encode($foto)
+    ];
+}
+
 function normalizarPrecoParaBanco(string $valor): ?float
 {
     $valor = trim($valor);
@@ -375,14 +406,19 @@ try {
                             $precoCampo = $produto['preco'] !== null
                                 ? number_format((float) $produto['preco'], 2, ',', '.')
                                 : '';
+                            $imagemProduto = montarImagemProduto($produto['foto']);
                         ?>
                         <div class="product-card" data-product-name="<?php echo htmlspecialchars(mb_strtolower($produto['nome']), ENT_QUOTES, 'UTF-8'); ?>">
                             <div class="product-left">
-                                <div class="product-image">
-                                    <?php if (!empty($produto['foto'])): ?>
-                                        Imagem
+                                <div class="product-image <?php echo $imagemProduto ? 'has-image' : ''; ?>">
+                                    <?php if ($imagemProduto): ?>
+                                        <img
+                                            style="width: 100% !important; background: white !important"
+                                            src="data:<?php echo htmlspecialchars($imagemProduto['mime']); ?>;base64,<?php echo $imagemProduto['base64']; ?>"
+                                            alt="<?php echo htmlspecialchars($produto['nome']); ?>"
+                                        >
                                     <?php else: ?>
-                                        Sem imagem
+                                        Imagem do produto
                                     <?php endif; ?>
                                 </div>
 
