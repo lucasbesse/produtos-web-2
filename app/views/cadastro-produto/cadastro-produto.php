@@ -31,6 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $preco = trim($_POST['preco'] ?? '');
     $fornecedorId = (int) $_SESSION['usuario_id'];
 
+    $fotoBytes = null;
+
     if ($nome === '') {
         $erro = 'Preencha o nome do produto.';
     } elseif ($quantidade === '' || $preco === '') {
@@ -43,48 +45,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!is_numeric($precoNormalizado) || (float) $precoNormalizado < 0) {
             $erro = 'Preço inválido.';
+        }
+    }
+
+    if ($erro === '' && isset($_FILES['foto']) && $_FILES['foto']['error'] !== UPLOAD_ERR_NO_FILE) {
+        if ($_FILES['foto']['error'] !== UPLOAD_ERR_OK) {
+            $erro = 'Erro ao fazer upload da imagem.';
         } else {
-            try {
-                $database = new Database();
-                $conn = $database->getConnection();
+            $tmpName = $_FILES['foto']['tmp_name'];
+            $mimeType = mime_content_type($tmpName);
 
-                $conn->beginTransaction();
+            $tiposPermitidos = [
+                'image/jpeg',
+                'image/png',
+                'image/webp',
+                'image/gif'
+            ];
 
-                $sqlProduto = "INSERT INTO produto (nome, descricao, foto, fornecedor_id)
-                               VALUES (:nome, :descricao, :foto, :fornecedor_id)
-                               RETURNING id";
+            if (!in_array($mimeType, $tiposPermitidos, true)) {
+                $erro = 'Envie uma imagem JPG, PNG, WEBP ou GIF.';
+            } else {
+                $fotoBytes = file_get_contents($tmpName);
 
-                $stmtProduto = $conn->prepare($sqlProduto);
-                $stmtProduto->execute([
-                    ':nome' => $nome,
-                    ':descricao' => $descricao !== '' ? $descricao : null,
-                    ':foto' => null,
-                    ':fornecedor_id' => $fornecedorId
-                ]);
-
-                $produtoId = (int) $stmtProduto->fetchColumn();
-
-                $sqlEstoque = "INSERT INTO estoque (quantidade, preco, produto_id)
-                               VALUES (:quantidade, :preco, :produto_id)";
-
-                $stmtEstoque = $conn->prepare($sqlEstoque);
-                $stmtEstoque->execute([
-                    ':quantidade' => (int) $quantidade,
-                    ':preco' => (float) $precoNormalizado,
-                    ':produto_id' => $produtoId
-                ]);
-
-                $conn->commit();
-
-                header('Location: ../home/index.php?produto_criado=1');
-                exit;
-            } catch (PDOException $e) {
-                if (isset($conn) && $conn->inTransaction()) {
-                    $conn->rollBack();
+                if ($fotoBytes === false) {
+                    $erro = 'Não foi possível ler a imagem enviada.';
                 }
-
-                $erro = 'Erro ao cadastrar produto.';
             }
+        }
+    }
+
+    if ($erro === '') {
+        try {
+            $database = new Database();
+            $conn = $database->getConnection();
+
+            $conn->beginTransaction();
+
+            $sqlProduto = "INSERT INTO produto (nome, descricao, foto, fornecedor_id)
+                           VALUES (:nome, :descricao, :foto, :fornecedor_id)
+                           RETURNING id";
+
+            $stmtProduto = $conn->prepare($sqlProduto);
+            $stmtProduto->bindValue(':nome', $nome, PDO::PARAM_STR);
+
+            if ($descricao !== '') {
+                $stmtProduto->bindValue(':descricao', $descricao, PDO::PARAM_STR);
+            } else {
+                $stmtProduto->bindValue(':descricao', null, PDO::PARAM_NULL);
+            }
+
+            if ($fotoBytes !== null) {
+                $stmtProduto->bindValue(':foto', $fotoBytes, PDO::PARAM_LOB);
+            } else {
+                $stmtProduto->bindValue(':foto', null, PDO::PARAM_NULL);
+            }
+
+            $stmtProduto->bindValue(':fornecedor_id', $fornecedorId, PDO::PARAM_INT);
+            $stmtProduto->execute();
+
+            $produtoId = (int) $stmtProduto->fetchColumn();
+
+            $sqlEstoque = "INSERT INTO estoque (quantidade, preco, produto_id)
+                           VALUES (:quantidade, :preco, :produto_id)";
+
+            $stmtEstoque = $conn->prepare($sqlEstoque);
+            $stmtEstoque->execute([
+                ':quantidade' => (int) $quantidade,
+                ':preco' => (float) $precoNormalizado,
+                ':produto_id' => $produtoId
+            ]);
+
+            $conn->commit();
+
+            header('Location: ../home/index.php?produto_criado=1');
+            exit;
+        } catch (PDOException $e) {
+            if (isset($conn) && $conn->inTransaction()) {
+                $conn->rollBack();
+            }
+
+            $erro = 'Erro ao cadastrar produto.';
         }
     }
 }
@@ -174,10 +214,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             type="file"
                             id="foto"
                             name="foto"
-                            disabled
+                            accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif"
                         >
                         <small class="field-help">
-                            Upload ainda não implementado nesta etapa.
+                            Formatos aceitos: JPG, PNG, WEBP ou GIF.
                         </small>
                     </div>
                 </div>

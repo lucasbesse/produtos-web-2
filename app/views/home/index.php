@@ -64,7 +64,6 @@ try {
                 e.quantidade
             FROM produto p
             LEFT JOIN estoque e ON e.produto_id = p.id
-            WHERE e.quantidade > 0
             ORDER BY p.id DESC";
 
     $stmt = $conn->prepare($sql);
@@ -239,7 +238,11 @@ try {
                     </div>
 
                     <div class="product-info">
-                        <h3>${escapeHtml(produto.nome)}</h3>
+                        <div class="s-between">
+                            <h3>${escapeHtml(produto.nome)}</h3>
+                            ${produto.quantidade == 0 ? '<span class="status-badge status-unavailable">Indisponível</span>' : ''}
+                        </div>                        
+                        
                         <p>${escapeHtml(produto.descricao ?? 'Sem descrição')}</p>
                         <div class="product-price">${precoTexto}</div>
                         <a href="#" onclick="return false;">Ver produto</a>

@@ -27,12 +27,38 @@ function formatarMoedaBr(?float $valor): string
     return 'R$ ' . number_format($valor, 2, ',', '.');
 }
 
+function normalizarPrecoParaBanco(string $valor): ?float
+{
+    $valor = trim($valor);
+
+    if ($valor === '') {
+        return null;
+    }
+
+    $valor = str_replace(' ', '', $valor);
+
+    $temVirgula = strpos($valor, ',') !== false;
+    $temPonto = strpos($valor, '.') !== false;
+
+    if ($temVirgula && $temPonto) {
+        $valor = str_replace('.', '', $valor);
+        $valor = str_replace(',', '.', $valor);
+    } elseif ($temVirgula) {
+        $valor = str_replace(',', '.', $valor);
+    }
+
+    if (!is_numeric($valor)) {
+        return null;
+    }
+
+    return (float) $valor;
+}
+
 $erro = '';
 $sucesso = '';
 $fornecedorId = (int) $_SESSION['usuario_id'];
 
 $modalEditData = null;
-$modalDeleteData = null;
 
 try {
     $database = new Database();
@@ -47,6 +73,7 @@ try {
             $descricao = trim($_POST['descricao'] ?? '');
             $quantidade = trim($_POST['quantidade'] ?? '');
             $preco = trim($_POST['preco'] ?? '');
+            $fotoBytes = null;
 
             $modalEditData = [
                 'id' => $produtoId,
@@ -65,31 +92,81 @@ try {
             } elseif (!ctype_digit($quantidade)) {
                 $erro = 'A quantidade deve ser um número inteiro positivo.';
             } else {
-                $precoNormalizado = str_replace('.', '', $preco);
-                $precoNormalizado = str_replace(',', '.', $precoNormalizado);
+                $precoNormalizado = normalizarPrecoParaBanco($preco);
 
-                if (!is_numeric($precoNormalizado) || (float) $precoNormalizado < 0) {
+                if ($precoNormalizado === null || $precoNormalizado < 0) {
                     $erro = 'Preço inválido.';
+                }
+            }
+
+            if ($erro === '' && isset($_FILES['foto']) && $_FILES['foto']['error'] !== UPLOAD_ERR_NO_FILE) {
+                if ($_FILES['foto']['error'] !== UPLOAD_ERR_OK) {
+                    $erro = 'Erro ao fazer upload da imagem.';
                 } else {
-                    $sqlProduto = "SELECT id
-                                   FROM produto
-                                   WHERE id = :produto_id
-                                     AND fornecedor_id = :fornecedor_id
-                                   LIMIT 1";
+                    $tmpName = $_FILES['foto']['tmp_name'];
+                    $mimeType = mime_content_type($tmpName);
 
-                    $stmtProduto = $conn->prepare($sqlProduto);
-                    $stmtProduto->execute([
-                        ':produto_id' => $produtoId,
-                        ':fornecedor_id' => $fornecedorId
-                    ]);
+                    $tiposPermitidos = [
+                        'image/jpeg',
+                        'image/png',
+                        'image/webp',
+                        'image/gif'
+                    ];
 
-                    $produtoValido = $stmtProduto->fetch(PDO::FETCH_ASSOC);
-
-                    if (!$produtoValido) {
-                        $erro = 'Produto não encontrado para este fornecedor.';
+                    if (!in_array($mimeType, $tiposPermitidos, true)) {
+                        $erro = 'Envie uma imagem JPG, PNG, WEBP ou GIF.';
                     } else {
-                        $conn->beginTransaction();
+                        $fotoBytes = file_get_contents($tmpName);
 
+                        if ($fotoBytes === false) {
+                            $erro = 'Não foi possível ler a imagem enviada.';
+                        }
+                    }
+                }
+            }
+
+            if ($erro === '') {
+                $sqlProduto = "SELECT id
+                               FROM produto
+                               WHERE id = :produto_id
+                                 AND fornecedor_id = :fornecedor_id
+                               LIMIT 1";
+
+                $stmtProduto = $conn->prepare($sqlProduto);
+                $stmtProduto->execute([
+                    ':produto_id' => $produtoId,
+                    ':fornecedor_id' => $fornecedorId
+                ]);
+
+                $produtoValido = $stmtProduto->fetch(PDO::FETCH_ASSOC);
+
+                if (!$produtoValido) {
+                    $erro = 'Produto não encontrado para este fornecedor.';
+                } else {
+                    $conn->beginTransaction();
+
+                    if ($fotoBytes !== null) {
+                        $sqlUpdateProduto = "UPDATE produto
+                                             SET nome = :nome,
+                                                 descricao = :descricao,
+                                                 foto = :foto
+                                             WHERE id = :produto_id
+                                               AND fornecedor_id = :fornecedor_id";
+
+                        $stmtUpdateProduto = $conn->prepare($sqlUpdateProduto);
+                        $stmtUpdateProduto->bindValue(':nome', $nome, PDO::PARAM_STR);
+
+                        if ($descricao !== '') {
+                            $stmtUpdateProduto->bindValue(':descricao', $descricao, PDO::PARAM_STR);
+                        } else {
+                            $stmtUpdateProduto->bindValue(':descricao', null, PDO::PARAM_NULL);
+                        }
+
+                        $stmtUpdateProduto->bindValue(':foto', $fotoBytes, PDO::PARAM_LOB);
+                        $stmtUpdateProduto->bindValue(':produto_id', $produtoId, PDO::PARAM_INT);
+                        $stmtUpdateProduto->bindValue(':fornecedor_id', $fornecedorId, PDO::PARAM_INT);
+                        $stmtUpdateProduto->execute();
+                    } else {
                         $sqlUpdateProduto = "UPDATE produto
                                              SET nome = :nome,
                                                  descricao = :descricao
@@ -103,48 +180,48 @@ try {
                             ':produto_id' => $produtoId,
                             ':fornecedor_id' => $fornecedorId
                         ]);
+                    }
 
-                        $sqlEstoque = "SELECT id
-                                       FROM estoque
-                                       WHERE produto_id = :produto_id
-                                       LIMIT 1";
+                    $sqlEstoque = "SELECT id
+                                   FROM estoque
+                                   WHERE produto_id = :produto_id
+                                   LIMIT 1";
 
-                        $stmtEstoque = $conn->prepare($sqlEstoque);
-                        $stmtEstoque->execute([
+                    $stmtEstoque = $conn->prepare($sqlEstoque);
+                    $stmtEstoque->execute([
+                        ':produto_id' => $produtoId
+                    ]);
+
+                    $estoqueExistente = $stmtEstoque->fetch(PDO::FETCH_ASSOC);
+
+                    if ($estoqueExistente) {
+                        $sqlUpdateEstoque = "UPDATE estoque
+                                             SET quantidade = :quantidade,
+                                                 preco = :preco
+                                             WHERE produto_id = :produto_id";
+
+                        $stmtUpdateEstoque = $conn->prepare($sqlUpdateEstoque);
+                        $stmtUpdateEstoque->execute([
+                            ':quantidade' => (int) $quantidade,
+                            ':preco' => $precoNormalizado,
                             ':produto_id' => $produtoId
                         ]);
+                    } else {
+                        $sqlInsertEstoque = "INSERT INTO estoque (quantidade, preco, produto_id)
+                                             VALUES (:quantidade, :preco, :produto_id)";
 
-                        $estoqueExistente = $stmtEstoque->fetch(PDO::FETCH_ASSOC);
-
-                        if ($estoqueExistente) {
-                            $sqlUpdateEstoque = "UPDATE estoque
-                                                 SET quantidade = :quantidade,
-                                                     preco = :preco
-                                                 WHERE produto_id = :produto_id";
-
-                            $stmtUpdateEstoque = $conn->prepare($sqlUpdateEstoque);
-                            $stmtUpdateEstoque->execute([
-                                ':quantidade' => (int) $quantidade,
-                                ':preco' => (float) $precoNormalizado,
-                                ':produto_id' => $produtoId
-                            ]);
-                        } else {
-                            $sqlInsertEstoque = "INSERT INTO estoque (quantidade, preco, produto_id)
-                                                 VALUES (:quantidade, :preco, :produto_id)";
-
-                            $stmtInsertEstoque = $conn->prepare($sqlInsertEstoque);
-                            $stmtInsertEstoque->execute([
-                                ':quantidade' => (int) $quantidade,
-                                ':preco' => (float) $precoNormalizado,
-                                ':produto_id' => $produtoId
-                            ]);
-                        }
-
-                        $conn->commit();
-
-                        header('Location: ./gerenciar-estoque.php?sucesso=editado');
-                        exit;
+                        $stmtInsertEstoque = $conn->prepare($sqlInsertEstoque);
+                        $stmtInsertEstoque->execute([
+                            ':quantidade' => (int) $quantidade,
+                            ':preco' => $precoNormalizado,
+                            ':produto_id' => $produtoId
+                        ]);
                     }
+
+                    $conn->commit();
+
+                    header('Location: ./gerenciar-estoque.php?sucesso=editado');
+                    exit;
                 }
             }
         }
@@ -367,7 +444,7 @@ try {
 
             <h2>Editar produto</h2>
 
-            <form method="POST" action="">
+            <form method="POST" action="" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="save_product">
                 <input type="hidden" name="produto_id" id="editProdutoId">
 
@@ -393,8 +470,13 @@ try {
 
                 <div class="form-group">
                     <label for="editFoto">Imagem do produto</label>
-                    <input type="file" id="editFoto" disabled>
-                    <small class="field-help">Upload ainda não implementado nesta etapa.</small>
+                    <input
+                        type="file"
+                        id="editFoto"
+                        name="foto"
+                        accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif"
+                    >
+                    <small class="field-help">Se selecionar uma nova imagem, ela substituirá a atual.</small>
                 </div>
 
                 <button type="submit" class="btn-submit">Salvar alterações</button>
@@ -444,6 +526,33 @@ try {
         const deleteButtons = document.querySelectorAll('.delete-product-button');
         const deleteProdutoId = document.getElementById('deleteProdutoId');
         const deleteMessage = document.getElementById('deleteMessage');
+
+        function apenasNumeros(valor) {
+            return valor.replace(/\D/g, '');
+        }
+
+        function aplicarMascaraPreco(valor) {
+            valor = apenasNumeros(valor);
+
+            if (!valor) {
+                return '';
+            }
+
+            while (valor.length < 3) {
+                valor = '0' + valor;
+            }
+
+            const centavos = valor.slice(-2);
+            let inteiro = valor.slice(0, -2);
+
+            inteiro = inteiro.replace(/^0+(?=\d)/, '');
+
+            return `${inteiro},${centavos}`;
+        }
+
+        editPreco.addEventListener('input', function () {
+            this.value = aplicarMascaraPreco(this.value);
+        });
 
         function openModal(modal) {
             modal.classList.add('active');
