@@ -38,7 +38,7 @@ CREATE TABLE cliente (
 CREATE TABLE produto (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
-    descricao VARCHAR(255),
+    descricao TEXT,
     foto BYTEA,
     fornecedor_id INTEGER NOT NULL,
     CONSTRAINT fk_produto_fornecedor

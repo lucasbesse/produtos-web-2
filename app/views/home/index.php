@@ -119,7 +119,7 @@ try {
                 <?php if ($usuarioLogado): ?>
                     <nav class="main-nav">
                         <?php if ($usuarioTipo === 'cliente'): ?>
-                            <a href="#" onclick="return false;">
+                            <a href="../carrinho/carrinho.php">
                                 <span class="menu-icon">🛒</span>
                                 <span>Carrinho</span>
                             </a>

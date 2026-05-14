@@ -26,6 +26,16 @@ function buildProductImage(produto) {
     return `Imagem do produto`;
 }
 
+function truncateText(text, maxLength = 60) {
+    if (!text) {
+        return 'Sem descrição';
+    }
+
+    return text.length > maxLength
+        ? text.slice(0, maxLength).trim() + '...'
+        : text;
+}
+
 function createProductCard(produto) {
     const precoTexto = produto.preco ? `R$ ${produto.preco}` : 'Preço não definido';
     const imageClass = produto.tem_imagem ? 'product-image has-image' : 'product-image';
@@ -42,9 +52,9 @@ function createProductCard(produto) {
                     ${produto.quantidade == 0 ? '<span class="status-badge status-unavailable">Indisponível</span>' : ''}
                 </div>                        
                 
-                <p>${escapeHtml(produto.descricao ?? 'Sem descrição')}</p>
+                <p>${escapeHtml(truncateText(produto.descricao, 150))}</p>
                 <div class="product-price">${precoTexto}</div>
-                <a href="#" onclick="return false;">Ver produto</a>
+                <a href="../detalhe-produto/detalhe-produto.php?id=${produto.id}">Ver produto</a>
             </div>
         </div>
     `;
