@@ -359,6 +359,29 @@ body {
     margin-bottom: 4px;
 }
 
+.cart-menu-link {
+    position: relative;
+}
+
+.cart-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background-color: #d92d20;
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
 @media (max-width: 600px) {
     .topbar-content {
         flex-direction: column;

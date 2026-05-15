@@ -198,7 +198,13 @@ $disponivel = $quantidadeDisponivel > 0;
         };
 
         function adicionarAoCarrinho() {
-            const STORAGE_KEY = 'cartItems';
+            const CURRENT_USER_ID = <?php echo json_encode($_SESSION['usuario_id'] ?? null); ?>;
+            const CURRENT_USER_TYPE = <?php echo json_encode($_SESSION['usuario_tipo'] ?? null); ?>;
+
+            const STORAGE_KEY = CURRENT_USER_ID && CURRENT_USER_TYPE
+                ? `cartItems_${CURRENT_USER_TYPE}_${CURRENT_USER_ID}`
+                : 'cartItems_guest';
+                
             const raw = localStorage.getItem(STORAGE_KEY);
             let items = [];
 

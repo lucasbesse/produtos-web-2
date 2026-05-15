@@ -97,7 +97,10 @@ try {
     <title>Home - Loja Virtual</title>
     <link rel="stylesheet" href="./index.css">
 </head>
-<body>
+<body 
+    data-user-id="<?php echo htmlspecialchars((string) ($_SESSION['usuario_id'] ?? '')); ?>"
+    data-user-type="<?php echo htmlspecialchars((string) ($_SESSION['usuario_tipo'] ?? '')); ?>"
+>
 
     <header class="topbar">
         <div class="topbar-content">
@@ -119,9 +122,10 @@ try {
                 <?php if ($usuarioLogado): ?>
                     <nav class="main-nav">
                         <?php if ($usuarioTipo === 'cliente'): ?>
-                            <a href="../carrinho/carrinho.php">
+                            <a href="../carrinho/carrinho.php" class="cart-menu-link">
                                 <span class="menu-icon">🛒</span>
                                 <span>Carrinho</span>
+                                <span class="cart-badge" id="cartBadge" style="display: none;">0</span>
                             </a>
 
                             <a href="#" onclick="return false;">
