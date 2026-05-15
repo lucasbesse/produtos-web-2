@@ -214,7 +214,6 @@ session_start();
 
                         <div class="product-main-info">
                             <h3>${escapeHtml(item.nome)}</h3>
-                            <p>${escapeHtml(truncateText(item.descricao, 90))}</p>
 
                             <div class="product-meta">
                                 <div><strong>Preço unitário:</strong> ${formatPrice(unitPrice)}</div>
