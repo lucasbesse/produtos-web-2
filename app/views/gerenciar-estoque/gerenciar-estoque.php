@@ -356,11 +356,32 @@ try {
 <body>
     <header class="topbar">
         <div class="topbar-content">
-            <a href="../home/index.php" class="logo">Minha Loja</a>
+            <a href="../gerenciar-estoque/gerenciar-estoque.php" class="logo">Minha Loja</a>
 
             <div class="header-actions">
                 <a href="../cadastro-produto/cadastro-produto.php" class="btn-primary">Cadastrar produto</a>
-                <a href="../home/index.php" class="btn-back">Voltar</a>
+                <a href="../home/index.php" class="btn-back">Gerenciar pedidos</a>
+
+                <div class="user-menu-wrapper">
+                    <button type="button" class="user-button" id="userMenuButton">
+                        <span class="user-avatar">👤</span>
+                    </button>
+
+                    <div class="user-popup" id="userPopup">
+                        <div class="user-popup-header">
+                            <div class="user-popup-avatar">👤</div>
+
+                            <div class="user-popup-info">
+                                <strong><?php echo htmlspecialchars($_SESSION['usuario_nome'] ?? 'Usuário'); ?></strong>
+                                <span>
+                                    <?php echo ($_SESSION['usuario_tipo'] ?? '') === 'fornecedor' ? 'Fornecedor' : 'Cliente'; ?>
+                                </span>
+                            </div>
+                        </div>
+
+                        <a href="../home/index.php?logout=1" class="logout-button">Sair</a>
+                    </div>
+                </div>
             </div>
         </div>
     </header>

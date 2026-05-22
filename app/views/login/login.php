@@ -48,7 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['usuario_email'] = $usuario['email'];
                 $_SESSION['usuario_tipo'] = $usuario['tipo'];
 
-                header('Location: ../home/index.php');
+                if ($usuario['tipo'] === 'fornecedor') {
+                    header('Location: ../gerenciar-estoque/gerenciar-estoque.php');
+                } else {
+                    header('Location: ../home/index.php');
+                }
+
                 exit;
             } else {
                 $erro = 'E-mail ou senha inválidos.';

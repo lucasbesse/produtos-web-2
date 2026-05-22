@@ -128,7 +128,7 @@ try {
                                 <span class="cart-badge" id="cartBadge" style="display: none;">0</span>
                             </a>
 
-                            <a href="#" onclick="return false;">
+                            <a href="../minhas-compras/minhas-compras.php">
                                 <span class="menu-icon">📦</span>
                                 <span>Minhas compras</span>
                             </a>

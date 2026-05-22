@@ -298,6 +298,129 @@ body {
     margin-top: 18px;
 }
 
+.message {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    font-size: 14px;
+}
+
+.error-message {
+    background-color: #ffe5e5;
+    color: #b42318;
+    border: 1px solid #f5b5b5;
+}
+
+.success-message {
+    background-color: #e7f8ec;
+    color: #157347;
+    border: 1px solid #b7e4c7;
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+.payment-section {
+    margin: 20px 0;
+}
+
+.payment-section h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+}
+
+.payment-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.payment-card {
+    border: 1px solid #d9d9d9;
+    background-color: #fff;
+    border-radius: 12px;
+    padding: 12px 10px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    transition: 0.2s ease;
+}
+
+.payment-card.selected {
+    border-color: #3483fa;
+    box-shadow: 0 0 0 2px rgba(52, 131, 250, 0.15);
+    background-color: #f4f8ff;
+}
+
+.payment-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0,0,0,0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 1000;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.confirm-modal {
+    width: 100%;
+    max-width: 420px;
+    background-color: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.16);
+}
+
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    border: none;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    color: #666;
+}
+
+.confirm-modal h2 {
+    font-size: 24px;
+    margin-bottom: 12px;
+}
+
+.confirm-modal p {
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 22px;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.modal-login-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
 @media (max-width: 900px) {
     .content-grid {
         grid-template-columns: 1fr;
@@ -352,5 +475,13 @@ body {
 
     .remove-button {
         width: 100%;
+    }
+
+    .payment-options {
+        grid-template-columns: 1fr;
+    }
+
+    .confirm-actions {
+        flex-direction: column;
     }
 }
