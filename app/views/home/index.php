@@ -237,7 +237,7 @@ try {
     <script>
         const produtos = <?php echo json_encode($produtos, JSON_UNESCAPED_UNICODE); ?>;
     </script>
-    <script src="./index.js"></script>
+    <script src="../../js/index.js"></script>
 
 </body>
 </html>

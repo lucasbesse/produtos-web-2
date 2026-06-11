@@ -252,6 +252,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 
-    <script src="./cadastro-cliente.js"></script>
+    <script src="../../js/cadastro-cliente.js"></script>
 </body>
 </html>

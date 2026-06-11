@@ -603,7 +603,7 @@ try {
         </div>
     </div>
 
-    <script src="./gerenciar-estoque.js"></script>
+    <script src="../../js/gerenciar-estoque.js"></script>
 
     <script>
         <?php if ($modalEditData): ?>
