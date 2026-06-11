@@ -307,6 +307,25 @@ try {
         }
     }
 
+    // ================= PAGINAÇÃO =================
+    $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+    $perPage = 5;
+    $offset = ($page - 1) * $perPage;
+
+    // total de produtos
+    $sqlCount = "SELECT COUNT(*)
+                FROM produto
+                WHERE fornecedor_id = :fornecedor_id";
+
+    $stmtCount = $conn->prepare($sqlCount);
+    $stmtCount->execute([
+        ':fornecedor_id' => $fornecedorId
+    ]);
+
+    $totalItems = (int) $stmtCount->fetchColumn();
+    $totalPages = max(1, ceil($totalItems / $perPage));
+
+    // lista paginada
     $sqlProdutos = "SELECT
                         p.id,
                         p.nome,
@@ -318,12 +337,14 @@ try {
                     FROM produto p
                     LEFT JOIN estoque e ON e.produto_id = p.id
                     WHERE p.fornecedor_id = :fornecedor_id
-                    ORDER BY p.id DESC";
+                    ORDER BY p.id DESC
+                    LIMIT :limit OFFSET :offset";
 
     $stmtProdutos = $conn->prepare($sqlProdutos);
-    $stmtProdutos->execute([
-        ':fornecedor_id' => $fornecedorId
-    ]);
+    $stmtProdutos->bindValue(':fornecedor_id', $fornecedorId, PDO::PARAM_INT);
+    $stmtProdutos->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $stmtProdutos->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmtProdutos->execute();
 
     $produtos = $stmtProdutos->fetchAll(PDO::FETCH_ASSOC);
 
@@ -492,6 +513,28 @@ try {
                     Nenhum produto encontrado.
                 </div>
             </section>
+            <?php if ($totalPages > 1): ?>
+                <div class="pagination">
+                    
+                    <?php if ($page > 1): ?>
+                        <a href="?page=<?php echo $page - 1; ?>" class="page-btn">←</a>
+                    <?php endif; ?>
+
+                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                        <a 
+                            href="?page=<?php echo $i; ?>" 
+                            class="page-btn <?php echo $i === $page ? 'active' : ''; ?>"
+                        >
+                            <?php echo $i; ?>
+                        </a>
+                    <?php endfor; ?>
+
+                    <?php if ($page < $totalPages): ?>
+                        <a href="?page=<?php echo $page + 1; ?>" class="page-btn">→</a>
+                    <?php endif; ?>
+
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
     </main>
 

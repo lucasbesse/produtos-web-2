@@ -388,22 +388,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'final
             renderCart();
         }
 
-        function calculateSummary(items) {
-            let totalItems = 0;
-            let totalValue = 0;
+        async function calculateTotalWithAjax(items) {
+            try {
+                const response = await fetch('./calculate-total.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ items })
+                });
 
-            items.forEach((item) => {
-                const quantity = Number(item.quantidade || 0);
-                const price = Number(item.preco || 0);
-
-                totalItems += quantity;
-                totalValue += quantity * price;
-            });
-
-            return {
-                totalItems,
-                totalValue
-            };
+                const data = await response.json();
+                return Number(data.total || 0);
+            } catch (error) {
+                return 0;
+            }
         }
 
         function createCartCard(item) {
@@ -476,11 +475,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'final
 
             cartList.innerHTML = items.map(createCartCard).join('');
 
-            const summary = calculateSummary(items);
+            const totalItems = items.reduce((total, item) => {
+                return total + Number(item.quantidade || 0);
+            }, 0);
 
-            summaryItems.textContent = String(summary.totalItems);
-            summarySubtotal.textContent = formatPrice(summary.totalValue);
-            summaryTotal.textContent = formatPrice(summary.totalValue);
+            summaryItems.textContent = String(totalItems);
+            summarySubtotal.textContent = 'Calculando...';
+            summaryTotal.textContent = 'Calculando...';
+
+            calculateTotalWithAjax(items).then((total) => {
+                summarySubtotal.textContent = formatPrice(total);
+                summaryTotal.textContent = formatPrice(total);
+            });
 
             updateCheckoutState();
         }

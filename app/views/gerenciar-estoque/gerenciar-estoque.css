@@ -509,6 +509,27 @@ body.modal-open {
     border-radius: 8px;
 }
 
+.pagination {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.page-btn {
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #eee;
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+}
+
+.page-btn.active {
+    background: #3483fa;
+    color: #fff;
+}
+
 @media (max-width: 900px) {
     .product-card {
         align-items: flex-start;

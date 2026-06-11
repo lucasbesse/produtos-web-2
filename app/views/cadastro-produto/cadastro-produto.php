@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $conn->commit();
 
-            header('Location: ../home/index.php?produto_criado=1');
+            header('Location: ../gerenciar-estoque/gerenciar-estoque.php');
             exit;
         } catch (PDOException $e) {
             if (isset($conn) && $conn->inTransaction()) {

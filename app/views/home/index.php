@@ -55,6 +55,14 @@ try {
     $database = new Database();
     $conn = $database->getConnection();
 
+    $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+    $perPage = 9;
+    $offset = ($page - 1) * $perPage;
+
+    $sqlCount = "SELECT COUNT(*) FROM produto";
+    $totalItems = (int) $conn->query($sqlCount)->fetchColumn();
+    $totalPages = max(1, ceil($totalItems / $perPage));
+
     $sql = "SELECT
                 p.id,
                 p.nome,
@@ -64,9 +72,12 @@ try {
                 e.quantidade
             FROM produto p
             LEFT JOIN estoque e ON e.produto_id = p.id
-            ORDER BY p.id DESC";
+            ORDER BY p.id DESC
+            LIMIT :limit OFFSET :offset";
 
     $stmt = $conn->prepare($sql);
+    $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
 
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -195,6 +206,28 @@ try {
     <section class="products-section">
         <h2>Produtos em destaque</h2>
         <div id="productsContainer" class="products-grid"></div>
+        <?php if ($totalPages > 1): ?>
+            <div class="pagination">
+
+                <?php if ($page > 1): ?>
+                    <a href="?page=<?php echo $page - 1; ?>">←</a>
+                <?php endif; ?>
+
+                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                    <a 
+                        href="?page=<?php echo $i; ?>"
+                        class="<?php echo $i === $page ? 'active' : ''; ?>"
+                    >
+                        <?php echo $i; ?>
+                    </a>
+                <?php endfor; ?>
+
+                <?php if ($page < $totalPages): ?>
+                    <a href="?page=<?php echo $page + 1; ?>">→</a>
+                <?php endif; ?>
+
+            </div>
+        <?php endif; ?>
     </section>
 
     <footer class="footer">
