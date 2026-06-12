@@ -143,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <a href="../home/index.php" class="logo">Minha Loja</a>
 
             <div class="header-actions">
-                <a href="../home/index.php" class="btn-back">Voltar</a>
+                <a href="../gerenciar-estoque/gerenciar-estoque.php" class="btn-back">Voltar</a>
             </div>
         </div>
     </header>

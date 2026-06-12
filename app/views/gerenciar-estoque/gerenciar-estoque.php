@@ -381,7 +381,7 @@ try {
 
             <div class="header-actions">
                 <a href="../cadastro-produto/cadastro-produto.php" class="btn-primary">Cadastrar produto</a>
-                <a href="../home/index.php" class="btn-back">Gerenciar pedidos</a>
+                <a href="../gerenciar-pedidos/gerenciar-pedidos.php" class="btn-back">Gerenciar pedidos</a>
 
                 <div class="user-menu-wrapper">
                     <button type="button" class="user-button" id="userMenuButton">
