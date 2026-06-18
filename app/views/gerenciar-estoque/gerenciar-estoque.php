@@ -280,28 +280,44 @@ try {
                 if (!$produtoValido) {
                     $erro = 'Produto não encontrado para este fornecedor.';
                 } else {
-                    $conn->beginTransaction();
+                    $sqlItemPedido = "SELECT 1
+                                      FROM item_pedido
+                                      WHERE produto_id = :produto_id
+                                      LIMIT 1";
 
-                    $sqlDeleteEstoque = "DELETE FROM estoque WHERE produto_id = :produto_id";
-                    $stmtDeleteEstoque = $conn->prepare($sqlDeleteEstoque);
-                    $stmtDeleteEstoque->execute([
+                    $stmtItemPedido = $conn->prepare($sqlItemPedido);
+                    $stmtItemPedido->execute([
                         ':produto_id' => $produtoId
                     ]);
 
-                    $sqlDeleteProduto = "DELETE FROM produto
-                                         WHERE id = :produto_id
-                                           AND fornecedor_id = :fornecedor_id";
+                    $temPedidosRelacionados = $stmtItemPedido->fetch(PDO::FETCH_ASSOC);
 
-                    $stmtDeleteProduto = $conn->prepare($sqlDeleteProduto);
-                    $stmtDeleteProduto->execute([
-                        ':produto_id' => $produtoId,
-                        ':fornecedor_id' => $fornecedorId
-                    ]);
+                    if ($temPedidosRelacionados) {
+                        $erro = 'Existem pedidos relacionados a esse produto.';
+                    } else {
+                        $conn->beginTransaction();
 
-                    $conn->commit();
+                        $sqlDeleteEstoque = "DELETE FROM estoque WHERE produto_id = :produto_id";
+                        $stmtDeleteEstoque = $conn->prepare($sqlDeleteEstoque);
+                        $stmtDeleteEstoque->execute([
+                            ':produto_id' => $produtoId
+                        ]);
 
-                    header('Location: ./gerenciar-estoque.php?sucesso=excluido');
-                    exit;
+                        $sqlDeleteProduto = "DELETE FROM produto
+                                             WHERE id = :produto_id
+                                               AND fornecedor_id = :fornecedor_id";
+
+                        $stmtDeleteProduto = $conn->prepare($sqlDeleteProduto);
+                        $stmtDeleteProduto->execute([
+                            ':produto_id' => $produtoId,
+                            ':fornecedor_id' => $fornecedorId
+                        ]);
+
+                        $conn->commit();
+
+                        header('Location: ./gerenciar-estoque.php?sucesso=excluido');
+                        exit;
+                    }
                 }
             }
         }
@@ -377,7 +393,7 @@ try {
 <body>
     <header class="topbar">
         <div class="topbar-content">
-            <a href="../gerenciar-estoque/gerenciar-estoque.php" class="logo">Minha Loja</a>
+            <a href="../home/index.php" class="logo">Minha Loja</a>
 
             <div class="header-actions">
                 <a href="../cadastro-produto/cadastro-produto.php" class="btn-primary">Cadastrar produto</a>
@@ -409,20 +425,20 @@ try {
 
     <main class="page-content">
         <div class="page-header">
-            <div>
-                <h1>Gerenciar produtos e estoque</h1>
-                <p>Edite, exclua e atualize o estoque dos seus produtos.</p>
-            </div>
-
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Pesquisar produto por nome...">
-            </div>
+            <h1>Gerenciar produtos e estoque</h1>
+            <p>Edite, exclua e atualize o estoque dos seus produtos.</p>
         </div>
 
         <?php if ($erro !== ''): ?>
             <div class="message error-message">
                 <?php echo htmlspecialchars($erro); ?>
             </div>
+        <?php endif; ?>
+
+        <?php if ($erro === 'Existem pedidos relacionados a esse produto.'): ?>
+            <script>
+                alert('Existem pedidos relacionados a esse produto.');
+            </script>
         <?php endif; ?>
 
         <?php if ($sucesso !== ''): ?>
@@ -439,7 +455,7 @@ try {
             </div>
         <?php else: ?>
             <section class="products-panel">
-                <div class="products-list" id="productsList">
+                <div class="products-list">
                     <?php foreach ($produtos as $produto): ?>
                         <?php
                             $quantidadeAtual = $produto['quantidade'] !== null ? (int) $produto['quantidade'] : 0;
@@ -455,7 +471,6 @@ try {
                                 <div class="product-image <?php echo $imagemProduto ? 'has-image' : ''; ?>">
                                     <?php if ($imagemProduto): ?>
                                         <img
-                                            style="width: 100% !important; background: white !important"
                                             src="data:<?php echo htmlspecialchars($imagemProduto['mime']); ?>;base64,<?php echo $imagemProduto['base64']; ?>"
                                             alt="<?php echo htmlspecialchars($produto['nome']); ?>"
                                         >
@@ -512,29 +527,28 @@ try {
                 <div class="empty-search" id="emptySearch" style="display: none;">
                     Nenhum produto encontrado.
                 </div>
+
+                <?php if ($totalPages > 1): ?>
+                    <div class="pagination">
+                        <?php if ($page > 1): ?>
+                            <a href="?page=<?php echo $page - 1; ?>" class="page-btn">←</a>
+                        <?php endif; ?>
+
+                        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                            <a
+                                href="?page=<?php echo $i; ?>"
+                                class="page-btn <?php echo $i === $page ? 'active' : ''; ?>"
+                            >
+                                <?php echo $i; ?>
+                            </a>
+                        <?php endfor; ?>
+
+                        <?php if ($page < $totalPages): ?>
+                            <a href="?page=<?php echo $page + 1; ?>" class="page-btn">→</a>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
             </section>
-            <?php if ($totalPages > 1): ?>
-                <div class="pagination">
-                    
-                    <?php if ($page > 1): ?>
-                        <a href="?page=<?php echo $page - 1; ?>" class="page-btn">←</a>
-                    <?php endif; ?>
-
-                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                        <a 
-                            href="?page=<?php echo $i; ?>" 
-                            class="page-btn <?php echo $i === $page ? 'active' : ''; ?>"
-                        >
-                            <?php echo $i; ?>
-                        </a>
-                    <?php endfor; ?>
-
-                    <?php if ($page < $totalPages): ?>
-                        <a href="?page=<?php echo $page + 1; ?>" class="page-btn">→</a>
-                    <?php endif; ?>
-
-                </div>
-            <?php endif; ?>
         <?php endif; ?>
     </main>
 
@@ -603,9 +617,130 @@ try {
         </div>
     </div>
 
-    <script src="../../js/gerenciar-estoque.js"></script>
-
     <script>
+        const body = document.body;
+
+        const searchInput = document.getElementById('searchInput');
+        const productCards = document.querySelectorAll('.product-card');
+        const emptySearch = document.getElementById('emptySearch');
+
+        const editModal = document.getElementById('editModal');
+        const closeEditModal = document.getElementById('closeEditModal');
+        const editButtons = document.querySelectorAll('.edit-product-button');
+
+        const editProdutoId = document.getElementById('editProdutoId');
+        const editNome = document.getElementById('editNome');
+        const editDescricao = document.getElementById('editDescricao');
+        const editQuantidade = document.getElementById('editQuantidade');
+        const editPreco = document.getElementById('editPreco');
+
+        const deleteModal = document.getElementById('deleteModal');
+        const closeDeleteModal = document.getElementById('closeDeleteModal');
+        const cancelDeleteButton = document.getElementById('cancelDeleteButton');
+        const deleteButtons = document.querySelectorAll('.delete-product-button');
+        const deleteProdutoId = document.getElementById('deleteProdutoId');
+        const deleteMessage = document.getElementById('deleteMessage');
+
+        function apenasNumeros(valor) {
+            return valor.replace(/\D/g, '');
+        }
+
+        function aplicarMascaraPreco(valor) {
+            valor = apenasNumeros(valor);
+
+            if (!valor) {
+                return '';
+            }
+
+            while (valor.length < 3) {
+                valor = '0' + valor;
+            }
+
+            const centavos = valor.slice(-2);
+            let inteiro = valor.slice(0, -2);
+
+            inteiro = inteiro.replace(/^0+(?=\d)/, '');
+
+            return `${inteiro},${centavos}`;
+        }
+
+        editPreco.addEventListener('input', function () {
+            this.value = aplicarMascaraPreco(this.value);
+        });
+
+        function openModal(modal) {
+            modal.classList.add('active');
+            body.classList.add('modal-open');
+        }
+
+        function closeModal(modal) {
+            modal.classList.remove('active');
+
+            if (!editModal.classList.contains('active') && !deleteModal.classList.contains('active')) {
+                body.classList.remove('modal-open');
+            }
+        }
+
+        editButtons.forEach((button) => {
+            button.addEventListener('click', function () {
+                editProdutoId.value = this.dataset.id;
+                editNome.value = this.dataset.nome;
+                editDescricao.value = this.dataset.descricao;
+                editQuantidade.value = this.dataset.quantidade;
+                editPreco.value = this.dataset.preco;
+
+                openModal(editModal);
+            });
+        });
+
+        deleteButtons.forEach((button) => {
+            button.addEventListener('click', function () {
+                deleteProdutoId.value = this.dataset.id;
+                deleteMessage.textContent = `Tem certeza que deseja excluir o produto "${this.dataset.nome}"?`;
+
+                openModal(deleteModal);
+            });
+        });
+
+        closeEditModal.addEventListener('click', () => closeModal(editModal));
+        closeDeleteModal.addEventListener('click', () => closeModal(deleteModal));
+        cancelDeleteButton.addEventListener('click', () => closeModal(deleteModal));
+
+        editModal.addEventListener('click', function (event) {
+            if (event.target === editModal) {
+                closeModal(editModal);
+            }
+        });
+
+        deleteModal.addEventListener('click', function (event) {
+            if (event.target === deleteModal) {
+                closeModal(deleteModal);
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeModal(editModal);
+                closeModal(deleteModal);
+            }
+        });
+
+        const userMenuButton = document.getElementById('userMenuButton');
+        const userPopup = document.getElementById('userPopup');
+
+        if (userMenuButton && userPopup) {
+            userMenuButton.addEventListener('click', function (event) {
+                event.stopPropagation();
+                userPopup.classList.toggle('active');
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!userPopup.contains(event.target) && !userMenuButton.contains(event.target)) {
+                    userPopup.classList.remove('active');
+                }
+            });
+        }
+
         <?php if ($modalEditData): ?>
             editProdutoId.value = <?php echo json_encode((string) $modalEditData['id']); ?>;
             editNome.value = <?php echo json_encode($modalEditData['nome']); ?>;
