@@ -1,5 +1,7 @@
 <?php
 
+#http://localhost:8080/produtos-web-2/app/api/pedidos.php?numero=1
+
 require_once __DIR__ . '/../../config/Database.php';
 
 header('Content-Type: application/json; charset=utf-8');
