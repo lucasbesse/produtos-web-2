@@ -196,7 +196,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Pedidos - Loja Virtual</title>
-    <link rel="stylesheet" href="./gerenciar-pedidos.css">
+    <link rel="stylesheet" href="../../css/gerenciar-pedidos.css">
 </head>
 <body>
     <header class="topbar">

@@ -129,7 +129,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Minhas Compras - Loja Virtual</title>
-    <link rel="stylesheet" href="./minhas-compras.css">
+    <link rel="stylesheet" href="../../css/minhas-compras.css">
 </head>
 <body>
     <header class="topbar">

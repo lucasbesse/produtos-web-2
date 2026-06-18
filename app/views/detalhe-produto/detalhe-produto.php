@@ -96,7 +96,7 @@ $usuarioTipo = $_SESSION['usuario_tipo'] ?? null;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalhes do Produto - Loja Virtual</title>
-    <link rel="stylesheet" href="./detalhe-produto.css">
+    <link rel="stylesheet" href="../../css/detalhe-produto.css">
     <style>
         body.modal-open {
             overflow: hidden;
