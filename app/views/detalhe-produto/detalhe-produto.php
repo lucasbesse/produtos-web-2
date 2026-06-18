@@ -86,6 +86,9 @@ if ($produtoId <= 0) {
 $imagemProduto = $produto ? montarImagemProduto($produto['foto']) : null;
 $quantidadeDisponivel = $produto && $produto['quantidade'] !== null ? (int) $produto['quantidade'] : 0;
 $disponivel = $quantidadeDisponivel > 0;
+
+$usuarioId = $_SESSION['usuario_id'] ?? null;
+$usuarioTipo = $_SESSION['usuario_tipo'] ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -94,6 +97,95 @@ $disponivel = $quantidadeDisponivel > 0;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalhes do Produto - Loja Virtual</title>
     <link rel="stylesheet" href="./detalhe-produto.css">
+    <style>
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0,0,0,0.35);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .confirm-modal {
+            width: 100%;
+            max-width: 420px;
+            background-color: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.16);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            border: none;
+            background: transparent;
+            font-size: 28px;
+            line-height: 1;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .confirm-modal h2 {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .confirm-modal p {
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 22px;
+        }
+
+        .confirm-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-secondary,
+        .modal-login-link {
+            flex: 1;
+            border: none;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-secondary {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+
+        .modal-login-link {
+            background-color: #3483fa;
+            color: #fff;
+        }
+
+        @media (max-width: 700px) {
+            .confirm-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
     <header class="topbar">
@@ -180,13 +272,24 @@ $disponivel = $quantidadeDisponivel > 0;
         <?php endif; ?>
     </main>
 
-    <script>
-        function mostrarAvisoCarrinho() {
-            alert('A funcionalidade de carrinho será implementada na próxima etapa.');
-        }
-    </script>
+    <div class="modal-overlay" id="loginRequiredModal">
+        <div class="confirm-modal">
+            <button type="button" class="modal-close" id="closeLoginRequiredModal">×</button>
+
+            <h2>Login necessário</h2>
+            <p>Produto adicionado ao carrinho temporário. Faça login como cliente para continuar a compra.</p>
+
+            <div class="confirm-actions">
+                <button type="button" class="btn-secondary" id="cancelLoginRequiredButton">Fechar</button>
+                <a href="../login/login.php" class="modal-login-link">Continuar</a>
+            </div>
+        </div>
+    </div>
 
     <script>
+        const CURRENT_USER_ID = <?php echo json_encode($usuarioId); ?>;
+        const CURRENT_USER_TYPE = <?php echo json_encode($usuarioTipo); ?>;
+
         const currentProduct = {
             id: <?php echo (int) $produto['id']; ?>,
             nome: <?php echo json_encode($produto['nome']); ?>,
@@ -197,49 +300,99 @@ $disponivel = $quantidadeDisponivel > 0;
             imagemMime: <?php echo json_encode($imagemProduto['mime'] ?? null); ?>
         };
 
-        function adicionarAoCarrinho() {
-            const CURRENT_USER_ID = <?php echo json_encode($_SESSION['usuario_id'] ?? null); ?>;
-            const CURRENT_USER_TYPE = <?php echo json_encode($_SESSION['usuario_tipo'] ?? null); ?>;
+        const loginRequiredModal = document.getElementById('loginRequiredModal');
+        const closeLoginRequiredModal = document.getElementById('closeLoginRequiredModal');
+        const cancelLoginRequiredButton = document.getElementById('cancelLoginRequiredButton');
 
-            const STORAGE_KEY = CURRENT_USER_ID && CURRENT_USER_TYPE
+        function getCartStorageKey() {
+            return CURRENT_USER_ID && CURRENT_USER_TYPE
                 ? `cartItems_${CURRENT_USER_TYPE}_${CURRENT_USER_ID}`
                 : 'cartItems_guest';
-                
-            const raw = localStorage.getItem(STORAGE_KEY);
-            let items = [];
+        }
 
-            if (raw) {
-                try {
-                    items = JSON.parse(raw);
-                    if (!Array.isArray(items)) {
-                        items = [];
-                    }
-                } catch (error) {
-                    items = [];
-                }
+        function getCartItemsByKey(storageKey) {
+            const raw = localStorage.getItem(storageKey);
+
+            if (!raw) {
+                return [];
             }
 
-            const existingIndex = items.findIndex((item) => item.id === currentProduct.id);
+            try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function saveCartItemsByKey(storageKey, items) {
+            localStorage.setItem(storageKey, JSON.stringify(items));
+        }
+
+        function openLoginRequiredModal() {
+            loginRequiredModal.classList.add('active');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeLoginRequiredModalFn() {
+            loginRequiredModal.classList.remove('active');
+            document.body.classList.remove('modal-open');
+        }
+
+        function adicionarOuAtualizarItemNoCarrinho(storageKey, product) {
+            const items = getCartItemsByKey(storageKey);
+            const existingIndex = items.findIndex((item) => item.id === product.id);
 
             if (existingIndex >= 0) {
                 const currentQuantity = Number(items[existingIndex].quantidade || 0);
 
-                if (currentQuantity >= currentProduct.quantidadeDisponivel) {
-                    alert(`Quantidade máxima disponível: ${currentProduct.quantidadeDisponivel}`);
-                    return;
+                if (currentQuantity >= product.quantidadeDisponivel) {
+                    alert(`Quantidade máxima disponível: ${product.quantidadeDisponivel}`);
+                    return false;
                 }
 
                 items[existingIndex].quantidade = currentQuantity + 1;
             } else {
                 items.push({
-                    ...currentProduct,
+                    ...product,
                     quantidade: 1
                 });
             }
 
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-            window.location.href = '../carrinho/carrinho.php';
+            saveCartItemsByKey(storageKey, items);
+            return true;
         }
+
+        function adicionarAoCarrinho() {
+            const storageKey = getCartStorageKey();
+            const success = adicionarOuAtualizarItemNoCarrinho(storageKey, currentProduct);
+
+            if (!success) {
+                return;
+            }
+
+            if (CURRENT_USER_ID && CURRENT_USER_TYPE === 'cliente') {
+                window.location.href = '../carrinho/carrinho.php';
+                return;
+            }
+
+            openLoginRequiredModal();
+        }
+
+        closeLoginRequiredModal.addEventListener('click', closeLoginRequiredModalFn);
+        cancelLoginRequiredButton.addEventListener('click', closeLoginRequiredModalFn);
+
+        loginRequiredModal.addEventListener('click', function (event) {
+            if (event.target === loginRequiredModal) {
+                closeLoginRequiredModalFn();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeLoginRequiredModalFn();
+            }
+        });
     </script>
 </body>
 </html>

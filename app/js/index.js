@@ -125,6 +125,72 @@ function getCartStorageKey() {
         : 'cartItems_guest';
 }
 
+function mergeGuestCartToLoggedUserCart() {
+    if (!CURRENT_USER_ID || CURRENT_USER_TYPE !== 'cliente') {
+        return;
+    }
+
+    const guestKey = 'cartItems_guest';
+    const userKey = getCartStorageKey();
+
+    const guestRaw = localStorage.getItem(guestKey);
+    if (!guestRaw) {
+        return;
+    }
+
+    let guestItems = [];
+    let userItems = [];
+
+    try {
+        guestItems = JSON.parse(guestRaw);
+        if (!Array.isArray(guestItems)) {
+            guestItems = [];
+        }
+    } catch (error) {
+        guestItems = [];
+    }
+
+    try {
+        const userRaw = localStorage.getItem(userKey);
+        userItems = userRaw ? JSON.parse(userRaw) : [];
+        if (!Array.isArray(userItems)) {
+            userItems = [];
+        }
+    } catch (error) {
+        userItems = [];
+    }
+
+    if (!guestItems.length) {
+        localStorage.removeItem(guestKey);
+        return;
+    }
+
+    const merged = [...userItems];
+
+    guestItems.forEach((guestItem) => {
+        const existingIndex = merged.findIndex((item) => item.id === guestItem.id);
+
+        if (existingIndex >= 0) {
+            const quantidadeAtual = Number(merged[existingIndex].quantidade || 0);
+            const quantidadeGuest = Number(guestItem.quantidade || 0);
+            const quantidadeDisponivel = Number(merged[existingIndex].quantidadeDisponivel || guestItem.quantidadeDisponivel || 0);
+
+            let novaQuantidade = quantidadeAtual + quantidadeGuest;
+
+            if (quantidadeDisponivel > 0 && novaQuantidade > quantidadeDisponivel) {
+                novaQuantidade = quantidadeDisponivel;
+            }
+
+            merged[existingIndex].quantidade = novaQuantidade;
+        } else {
+            merged.push(guestItem);
+        }
+    });
+
+    localStorage.setItem(userKey, JSON.stringify(merged));
+    localStorage.removeItem(guestKey);
+}
+
 function updateCartBadge() {
     if (!cartBadge) {
         return;
@@ -161,5 +227,6 @@ function updateCartBadge() {
     }
 }
 
+mergeGuestCartToLoggedUserCart();
 renderProducts(produtos);
 updateCartBadge();
