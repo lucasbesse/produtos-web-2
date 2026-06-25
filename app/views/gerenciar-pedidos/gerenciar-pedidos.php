@@ -92,7 +92,7 @@ try {
         } elseif (!in_array($novoStatus, $statusPermitidos, true)) {
             $erro = 'Status inválido.';
         } else {
-            $sqlValidaPedido = "SELECT DISTINCT p.numero
+            $sqlValidaPedido = "SELECT DISTINCT p.numero, p.situacao
                                 FROM pedido p
                                 INNER JOIN item_pedido ip ON ip.pedido_numero = p.numero
                                 INNER JOIN produto pr ON pr.id = ip.produto_id
@@ -111,6 +111,94 @@ try {
             if (!$pedidoValido) {
                 $erro = 'Pedido não encontrado para este fornecedor.';
             } else {
+                $statusAtual = $pedidoValido['situacao'];
+
+                $conn->beginTransaction();
+
+                // Se estava CANCELADO e vai sair de CANCELADO, desconta do estoque novamente
+                if ($statusAtual === 'CANCELADO' && $novoStatus !== 'CANCELADO') {
+                    $sqlItensReverter = "SELECT ip.produto_id, ip.quantidade
+                                         FROM item_pedido ip
+                                         INNER JOIN produto pr ON pr.id = ip.produto_id
+                                         WHERE ip.pedido_numero = :pedido_numero
+                                           AND pr.fornecedor_id = :fornecedor_id";
+
+                    $stmtItensReverter = $conn->prepare($sqlItensReverter);
+                    $stmtItensReverter->execute([
+                        ':pedido_numero' => $pedidoNumero,
+                        ':fornecedor_id' => $fornecedorId
+                    ]);
+
+                    $itensReverter = $stmtItensReverter->fetchAll(PDO::FETCH_ASSOC);
+
+                    foreach ($itensReverter as $itemReverter) {
+                        $produtoId = (int) $itemReverter['produto_id'];
+                        $quantidadeItem = (int) $itemReverter['quantidade'];
+
+                        $sqlBuscaEstoque = "SELECT quantidade
+                                            FROM estoque
+                                            WHERE produto_id = :produto_id
+                                            LIMIT 1";
+
+                        $stmtBuscaEstoque = $conn->prepare($sqlBuscaEstoque);
+                        $stmtBuscaEstoque->execute([
+                            ':produto_id' => $produtoId
+                        ]);
+
+                        $estoqueAtual = $stmtBuscaEstoque->fetchColumn();
+
+                        if ($estoqueAtual === false) {
+                            throw new Exception('Estoque não encontrado para um dos produtos do pedido.');
+                        }
+
+                        if ((int) $estoqueAtual < $quantidadeItem) {
+                            throw new Exception('Não há estoque suficiente para reativar o pedido.');
+                        }
+
+                        $sqlBaixaEstoque = "UPDATE estoque
+                                            SET quantidade = quantidade - :quantidade
+                                            WHERE produto_id = :produto_id";
+
+                        $stmtBaixaEstoque = $conn->prepare($sqlBaixaEstoque);
+                        $stmtBaixaEstoque->execute([
+                            ':quantidade' => $quantidadeItem,
+                            ':produto_id' => $produtoId
+                        ]);
+                    }
+                }
+
+                // Se não estava CANCELADO e vai para CANCELADO, devolve para o estoque
+                if ($statusAtual !== 'CANCELADO' && $novoStatus === 'CANCELADO') {
+                    $sqlItensCancelar = "SELECT ip.produto_id, ip.quantidade
+                                         FROM item_pedido ip
+                                         INNER JOIN produto pr ON pr.id = ip.produto_id
+                                         WHERE ip.pedido_numero = :pedido_numero
+                                           AND pr.fornecedor_id = :fornecedor_id";
+
+                    $stmtItensCancelar = $conn->prepare($sqlItensCancelar);
+                    $stmtItensCancelar->execute([
+                        ':pedido_numero' => $pedidoNumero,
+                        ':fornecedor_id' => $fornecedorId
+                    ]);
+
+                    $itensCancelar = $stmtItensCancelar->fetchAll(PDO::FETCH_ASSOC);
+
+                    foreach ($itensCancelar as $itemCancelar) {
+                        $produtoId = (int) $itemCancelar['produto_id'];
+                        $quantidadeItem = (int) $itemCancelar['quantidade'];
+
+                        $sqlRetornaEstoque = "UPDATE estoque
+                                              SET quantidade = quantidade + :quantidade
+                                              WHERE produto_id = :produto_id";
+
+                        $stmtRetornaEstoque = $conn->prepare($sqlRetornaEstoque);
+                        $stmtRetornaEstoque->execute([
+                            ':quantidade' => $quantidadeItem,
+                            ':produto_id' => $produtoId
+                        ]);
+                    }
+                }
+
                 $dataEntrega = null;
 
                 if ($novoStatus === 'ENTREGUE') {
@@ -129,6 +217,7 @@ try {
                     ':numero' => $pedidoNumero
                 ]);
 
+                $conn->commit();
                 $sucesso = 'Status do pedido atualizado com sucesso.';
             }
         }
@@ -186,7 +275,11 @@ try {
             'imagem' => $imagem
         ];
     }
-} catch (PDOException $e) {
+} catch (Throwable $e) {
+    if (isset($conn) && $conn->inTransaction()) {
+        $conn->rollBack();
+    }
+
     $erro = 'Erro ao carregar os pedidos.';
 }
 ?>
@@ -206,6 +299,7 @@ try {
             <div class="header-actions">
                 <a href="../cadastro-produto/cadastro-produto.php" class="btn-primary">Cadastrar produto</a>
                 <a href="../gerenciar-estoque/gerenciar-estoque.php" class="btn-back">Gerenciar estoque</a>
+
                 <div class="user-menu-wrapper">
                     <button type="button" class="user-button" id="userMenuButton">
                         <span class="user-avatar">👤</span>
@@ -224,8 +318,8 @@ try {
                         </div>
 
                         <a href="../home/index.php?logout=1" class="logout-button">Sair</a>
+                    </div>
                 </div>
-            </div>
             </div>
         </div>
     </header>

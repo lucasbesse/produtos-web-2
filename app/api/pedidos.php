@@ -1,21 +1,106 @@
 <?php
 
-#http://localhost:8080/produtos-web-2/app/api/pedidos.php?numero=1
-
 require_once __DIR__ . '/../../config/Database.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-$numero = isset($_GET['numero']) ? (int) $_GET['numero'] : null;
-$cliente = isset($_GET['cliente']) ? trim($_GET['cliente']) : null;
-
-if (($numero === null || $numero <= 0) && ($cliente === null || $cliente === '')) {
-    http_response_code(400);
-    echo json_encode([
-        'erro' => true,
-        'mensagem' => 'Informe o número do pedido ou o nome do cliente.'
-    ], JSON_UNESCAPED_UNICODE);
+function jsonResponse(array $data, int $statusCode = 200): void
+{
+    http_response_code($statusCode);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     exit;
+}
+
+function getRouteSegments(): array
+{
+    $pathInfo = $_SERVER['PATH_INFO'] ?? '';
+
+    if ($pathInfo !== '') {
+        $path = trim($pathInfo, '/');
+    } else {
+        $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $scriptDir = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+        $scriptBase = basename($scriptName);
+
+        if ($scriptDir !== '' && $scriptDir !== '/' && str_starts_with($requestPath, $scriptDir)) {
+            $requestPath = substr($requestPath, strlen($scriptDir));
+        }
+
+        $requestPath = ltrim($requestPath, '/');
+
+        if (str_starts_with($requestPath, $scriptBase)) {
+            $requestPath = substr($requestPath, strlen($scriptBase));
+        }
+
+        $requestPath = ltrim($requestPath, '/');
+
+        if (str_starts_with($requestPath, 'pedidos/')) {
+            $requestPath = substr($requestPath, strlen('pedidos/'));
+        } elseif ($requestPath === 'pedidos') {
+            $requestPath = '';
+        }
+
+        $path = trim($requestPath, '/');
+    }
+
+    if ($path === '') {
+        return [];
+    }
+
+    return array_values(array_filter(explode('/', $path), fn ($segment) => $segment !== ''));
+}
+
+$segments = getRouteSegments();
+
+/*
+Rotas aceitas:
+
+1) Buscar por número do pedido
+   /app/api/pedidos.php/1
+   ou, com rewrite:
+   /app/api/pedidos/1
+
+2) Buscar por nome do cliente
+   /app/api/pedidos.php/cliente/Maria
+   ou, com rewrite:
+   /app/api/pedidos/cliente/Maria
+*/
+
+if (empty($segments)) {
+    jsonResponse([
+        'erro' => true,
+        'mensagem' => 'Informe a rota corretamente.',
+        'exemplos' => [
+            '/app/api/pedidos.php/1',
+            '/app/api/pedidos.php/cliente/Maria'
+        ]
+    ], 400);
+}
+
+$modoBusca = null;
+$numero = null;
+$cliente = null;
+
+if (count($segments) === 1 && ctype_digit($segments[0])) {
+    $modoBusca = 'numero';
+    $numero = (int) $segments[0];
+} elseif (
+    count($segments) >= 2 &&
+    strtolower($segments[0]) === 'cliente' &&
+    trim(urldecode($segments[1])) !== ''
+) {
+    $modoBusca = 'cliente';
+    $cliente = trim(urldecode($segments[1]));
+} else {
+    jsonResponse([
+        'erro' => true,
+        'mensagem' => 'Rota inválida.',
+        'exemplos' => [
+            '/app/api/pedidos.php/1',
+            '/app/api/pedidos.php/cliente/Maria'
+        ]
+    ], 400);
 }
 
 try {
@@ -25,12 +110,12 @@ try {
     $params = [];
     $where = [];
 
-    if ($numero !== null && $numero > 0) {
+    if ($modoBusca === 'numero') {
         $where[] = 'p.numero = :numero';
         $params[':numero'] = $numero;
     }
 
-    if ($cliente !== null && $cliente !== '') {
+    if ($modoBusca === 'cliente') {
         $where[] = 'c.nome ILIKE :cliente';
         $params[':cliente'] = '%' . $cliente . '%';
     }
@@ -88,17 +173,31 @@ try {
         ];
     }
 
-    echo json_encode([
+    $pedidos = array_values($pedidos);
+
+    if ($modoBusca === 'numero') {
+        if (empty($pedidos)) {
+            jsonResponse([
+                'erro' => true,
+                'mensagem' => 'Pedido não encontrado.'
+            ], 404);
+        }
+
+        jsonResponse([
+            'erro' => false,
+            'pedido' => $pedidos[0]
+        ]);
+    }
+
+    jsonResponse([
         'erro' => false,
         'quantidade_pedidos' => count($pedidos),
-        'pedidos' => array_values($pedidos)
-    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-
+        'pedidos' => $pedidos
+    ]);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
+    jsonResponse([
         'erro' => true,
         'mensagem' => 'Erro interno ao consultar pedidos.',
         'detalhe' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
+    ], 500);
 }
